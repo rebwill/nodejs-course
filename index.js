@@ -40,19 +40,56 @@ const url = require('url');
 /////////////////////////////
 // SERVER
 
-const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, 'utf-8');// we can use the sync version here because this is only called once at the beginning, to load the file and then it doesn't happen again.
+const replaceTemplate = (temp, product) => {
+    let output = temp.replace(/{%PRODUCTNAME%}/g, product.productName); // we don't want to manipulate directly the data being passed in, so we create a variable with "let" that we can keep changing.
+    // ^making it a regex with backslashes and adding g flag makes it global; will replace ALL instances, not just first one found.
+    output = output.replace(/{%IMAGE%}/g, product.image);
+    output = output.replace(/{%PRICE%}/g, product.price);
+    output = output.replace(/{%FROM%}/g, product.from);
+    output = output.replace(/{%NUTRIENTS%}/g, product.nutrients);
+    output = output.replace(/{%QUANTITY%}/g, product.quantity);
+    output = output.replace(/{%DESCRIPTION%}/g, product.description);
+    output = output.replace(/{%ID%}/g, product.id);
+
+    if (!product.organic) output = output.replace(/{%NOT_ORGANIC%}/g, 'not-organic');
+    return output;
+}
+
+const tempOverview = fs.readFileSync(`${__dirname}/templates/template-overview.html`, 'utf-8');
+const tempCard = fs.readFileSync(`${__dirname}/templates/template-card.html`, 'utf-8');
+const tempProduct = fs.readFileSync(`${__dirname}/templates/template-product.html`, 'utf-8');
+
+const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, 'utf-8');
 const dataObj = JSON.parse(data);
+// ^we use the sync version here because this is only called once at the beginning, to load the file and then it doesn't happen again.
+// we are loading this data (product JSON, templates) at the beginning and reading to memory instead of making a new request every time they are needed.
 
 const server = http.createServer((req, res) => {       // each time a new request hits the server, this callback function will be called. Res is the response object.
-    const pathName = req.url;
+    
+    const { query, pathname } = url.parse(req.url, true);
 
-    if (pathName === '/' || pathName === '/overview' ) {
-        res.end("This is the OVERVIEW");
-    } else if (pathName === '/product') {
-        res.end("This is the PRODUCT");
-    } else if (pathName === '/api') {
+    // Overview 
+    if (pathname === '/' || pathname === '/overview' ) {
+        res.writeHead(200, {'Content-type': 'text/html'});
+
+        const cardsHtml = dataObj.map(el => replaceTemplate(tempCard, el)).join('');
+        const output = tempOverview.replace('{%PRODUCT_CARD%}', cardsHtml);
+        res.end(output);
+    
+    // Product 
+    } else if (pathname === '/product') {
+        res.writeHead(200, {'Content-type': 'text/html'});
+        const product = dataObj[query.id];
+        const output = replaceTemplate(tempProduct, product);
+
+        res.end(output);
+    
+    // API 
+    } else if (pathname === '/api') {
         res.writeHead(200, {'Content-type': 'application/json'});
         res.end(data);
+
+    // Not found
     } else {
         res.writeHead(404, {
             'Content-type': 'text/html'
