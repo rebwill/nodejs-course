@@ -3,6 +3,9 @@ const fs = require('fs');
 const http = require('http');
 const url = require('url');
 
+// Then third party modules
+const slugify = require('slugify');
+
 // Then our own modules
 const replaceTemplate = require('./modules/replaceTemplate'); // we are saving this into a variable to use in this module.
 
@@ -53,6 +56,11 @@ const data = fs.readFileSync(`${__dirname}/dev-data/data.json`, 'utf-8');
 const dataObj = JSON.parse(data);
 // ^we use the sync version here because this is only called once at the beginning, to load the file and then it doesn't happen again.
 // we are loading this data (product JSON, templates) at the beginning and reading to memory instead of making a new request every time they are needed.
+
+// console.log(slugify('Fresh Avocados', { lower: true })); // we are using slugify as a function and passing in a string. We can find the options for altering the string in the NPM documentation.
+
+const slugs = dataObj.map(el => slugify(el.productName, { lower: true }));
+console.log(slugs);
 
 const server = http.createServer((req, res) => {       // each time a new request hits the server, this callback function will be called. Res is the response object.
     
